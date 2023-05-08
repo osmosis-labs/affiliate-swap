@@ -41,3 +41,6 @@ mod entry_points {
 
 #[cfg(not(feature = "library"))]
 pub use crate::entry_points::*;
+
+#[cfg(test)]
+mod test;
