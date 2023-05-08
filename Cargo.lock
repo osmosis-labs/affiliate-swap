@@ -737,9 +737,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "sylvia"
-version = "0.2.2"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ce3114ce22c8388de231a8a8775c52ec011b4f3bd6dac61c0ec28490c58fc40"
+checksum = "4e321a5aca5c852bee19eee5d16f21d7fc55f3c76aa42a261f85d47191db3181"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -747,14 +747,15 @@ dependencies = [
  "schemars",
  "serde",
  "serde-cw-value",
+ "serde-json-wasm",
  "sylvia-derive",
 ]
 
 [[package]]
 name = "sylvia-derive"
-version = "0.2.2"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a0772f73f499387afd9b57151e4b8f4440c3ea8d8e451e6780118543aad1c6e"
+checksum = "e23f9630b9234860304671d934f73a0f3d9eb1c903a3928ef9be6cf62ebda3cf"
 dependencies = [
  "convert_case",
  "proc-macro-crate",
