@@ -1,0 +1,41 @@
+[package]
+name = "affiliate-swap"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+codegen-units = 1
+debug = false
+debug-assertions = false
+incremental = false
+lto = true
+opt-level = 3
+overflow-checks = true
+panic = 'abort'
+rpath = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[package.metadata.scripts]
+optimize = """docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  cosmwasm/rust-optimizer:0.12.6
+"""
+
+[dependencies]
+cosmwasm-std = { version = "1.2", features = ["stargate"] }
+cosmwasm-schema = "1.1.6"
+serde = { version = "1.0.147", features = ["derive"] }
+sylvia = "0.2.2"
+schemars = "0.8.11"
+thiserror = {version = "1.0.31"}
+cw-storage-plus = "1.0.1"
+cw2 = "1.0.1"
