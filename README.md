@@ -1,5 +1,3 @@
-Sure, here's the updated README for the "Affiliate Swap" contract:
-
 # Affiliate Swap Contract
 
 The Affiliate Swap contract is a smart contract for executing a swap between two
