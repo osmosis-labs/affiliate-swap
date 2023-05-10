@@ -33,7 +33,7 @@ pub struct AffiliateSwap<'a> {
     pub(crate) active_swap: Item<'a, ActiveSwap>,
 }
 
-#[contract]
+#[contract(error=ContractError)]
 impl<'a> AffiliateSwap<'a> {
     /// Create an AffiliateSwap instance.
     pub const fn new() -> Self {
