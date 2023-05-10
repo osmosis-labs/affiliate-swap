@@ -1,15 +1,13 @@
 pub mod contract;
+
 mod error;
 pub use crate::error::ContractError;
-
-// #[cfg(test)]
-// mod test;
 
 #[cfg(not(feature = "library"))]
 mod entry_points {
     use crate::contract::{AffiliateSwap, ContractExecMsg, ContractQueryMsg, InstantiateMsg};
     use crate::error::ContractError;
-    use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response};
+    use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response};
 
     const CONTRACT: AffiliateSwap = AffiliateSwap::new();
 
@@ -36,6 +34,11 @@ mod entry_points {
     #[entry_point]
     pub fn query(deps: Deps, env: Env, msg: ContractQueryMsg) -> Result<Binary, ContractError> {
         msg.dispatch(&CONTRACT, (deps, env))
+    }
+
+    #[entry_point]
+    pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+        CONTRACT.reply((deps, env), msg)
     }
 }
 

@@ -20,4 +20,15 @@ pub enum ContractError {
 
     #[error("Funds must contain at least one token")]
     AtLeastSingleTokenExpected {},
+
+    #[error("There is already an active swap stored for this contract. Re-entry not allowed.")]
+    ActiveSwapExists {},
+
+    #[error("Swap failed: {reason}")]
+    FailedSwap { reason: String },
+
+    #[error(
+        "Unexpected error. This should never happen as validation should have prevented this."
+    )]
+    Unexpected {},
 }

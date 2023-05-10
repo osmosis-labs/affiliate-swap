@@ -48,9 +48,9 @@ impl Contract<Empty> for AffiliateSwap<'_> {
 
     fn sudo(
         &self,
-        deps: cosmwasm_std::DepsMut<Empty>,
-        env: cosmwasm_std::Env,
-        msg: Vec<u8>,
+        _deps: cosmwasm_std::DepsMut<Empty>,
+        _env: cosmwasm_std::Env,
+        _msg: Vec<u8>,
     ) -> AnyResult<cosmwasm_std::Response<Empty>> {
         bail!("sudo not implemented for contract")
     }
