@@ -14,7 +14,7 @@ use sylvia::contract;
 use crate::error::ContractError;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:transmuter";
+const CONTRACT_NAME: &str = "crates.io:affiliate_swap";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const DEFAULT_MAX_FEE: &str = "5";
@@ -35,7 +35,7 @@ pub struct AffiliateSwap<'a> {
 
 #[contract]
 impl<'a> AffiliateSwap<'a> {
-    /// Create a Transmuter instance.
+    /// Create an AffiliateSwap instance.
     pub const fn new() -> Self {
         Self {
             max_fee_percentage: Item::new("max_fee"),

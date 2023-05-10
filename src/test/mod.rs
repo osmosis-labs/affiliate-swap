@@ -133,7 +133,7 @@ impl TestEnvBuilder {
                 creator.clone(),
                 &self.instantiate_msg.expect("instantiate msg not set"),
                 &[],
-                "transmuter",
+                "affiliate_swap",
                 None,
             )
             .unwrap();
