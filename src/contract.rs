@@ -80,7 +80,7 @@ impl<'a> AffiliateSwap<'a> {
         fee_percentage: Option<Decimal>,
         fee_collector: String,
     ) -> Result<Response, ContractError> {
-        let (deps, _env, info) = ctx;
+        let (deps, env, info) = ctx;
 
         // Safety check: No active swap
         if self.active_swap.may_load(deps.storage)?.is_some() {
@@ -125,7 +125,7 @@ impl<'a> AffiliateSwap<'a> {
         }
 
         let swap_msg = MsgSwapExactAmountIn {
-            sender: info.sender.clone().into_string(),
+            sender: env.contract.address.to_string(),
             routes,
             token_in: Some(
                 Coin {
@@ -172,6 +172,7 @@ impl<'a> AffiliateSwap<'a> {
         self.active_swap.remove(deps.storage);
 
         // Success
+        deps.api.debug(&format!("Reply: {:?}", msg));
         if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
             let res: MsgSwapExactAmountInResponse = b.try_into()?;
 
@@ -187,12 +188,6 @@ impl<'a> AffiliateSwap<'a> {
                 to_address: active_swap.original_sender.clone().into_string(),
                 amount: coins(amount.u128(), token_out_denom.clone()),
             };
-
-            // let response = SwapResponse {
-            //     original_sender: active_swap.original_sender.clone().into_string(),
-            //     token_out_denom: token_out_denom.to_string(),
-            //     amount: amount.u128().into(),
-            // };
 
             let token_in: Coin = coinvert(
                 active_swap

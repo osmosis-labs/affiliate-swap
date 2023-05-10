@@ -57,7 +57,7 @@ pub enum ExecMsg {
 
 // The actual implementation of SwapAmountInRoute is in osmosis_std 
 pub struct SwapAmountInRoute {
-    pub pool_id: u64,
+    pub pool_id: String,
     pub token_out_denom: String,
 }
 ```
@@ -69,11 +69,11 @@ As an example, when calling the contract you can use a message like:
   "swap": {
     "routes": [
       {
-        "pool_id": 1,
+        "pool_id": "1",
         "token_out_denom": "uosmo"
       },
       {
-        "pool_id": 2,
+        "pool_id": "2",
         "token_out_denom": "uion"
       }
     ],
