@@ -9,95 +9,12 @@ use cosmwasm_std::{
     from_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Empty, OwnedDeps, Reply,
     Response, SubMsgResponse, SubMsgResult, Uint128,
 };
-use cw_multi_test::Executor;
 use osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountInResponse;
 use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
 
+use crate::contract::ExecMsg;
 use crate::contract::{AffiliateSwap, ContractExecMsg, SwapResponse};
-use crate::test::TestEnv;
-use crate::{
-    contract::{ExecMsg, InstantiateMsg},
-    test::TestEnvBuilder,
-    ContractError,
-};
 use crate::{execute, reply};
-
-fn setup_integration(fee: Option<Decimal>) -> TestEnv {
-    TestEnvBuilder::new()
-        .with_instantiate_msg(InstantiateMsg {
-            max_fee_percentage: fee,
-        })
-        .with_account(
-            "provider",
-            vec![Coin::new(2_000, "uosmo"), Coin::new(2_000, "uion")],
-        )
-        .build()
-}
-
-// Test instantiate with no max fee
-#[test]
-fn test_instantiate() {
-    // If no max_fee is set, the max fee defaults to 5%
-    let t = setup_integration(None);
-    let max_fee = t.query_max_fee();
-    assert_eq!(max_fee, Decimal::from_str("5").unwrap());
-
-    // Test instantiate with a 5% max fee
-    let t = setup_integration(Some(Decimal::from_str("5").unwrap()));
-    let max_fee = t.query_max_fee();
-    assert_eq!(max_fee, Decimal::from_str("5").unwrap());
-
-    // Test instantiate with a 10% max fee
-    let t = setup_integration(Some(Decimal::from_str("1").unwrap()));
-    let max_fee = t.query_max_fee();
-    assert_eq!(max_fee, Decimal::from_str("1").unwrap());
-
-    // Test instantiate with a 0% max fee
-    let t = setup_integration(Some(Decimal::from_str("0").unwrap()));
-    let max_fee = t.query_max_fee();
-    assert_eq!(max_fee, Decimal::from_str("0").unwrap());
-
-    // Test instantiate with a 50% max fee
-    let t = setup_integration(Some(Decimal::from_str("50").unwrap()));
-    let max_fee = t.query_max_fee();
-    assert_eq!(max_fee, Decimal::from_str("50").unwrap());
-}
-
-#[test]
-#[should_panic(expected = "Invalid max fee percentage. Must be between 0 and 50")]
-fn test_instantiate_with_fee_greater_than_50_percent() {
-    TestEnvBuilder::new()
-        .with_instantiate_msg(InstantiateMsg {
-            max_fee_percentage: Some(Decimal::from_str("51").unwrap()),
-        })
-        .build();
-}
-
-#[test]
-fn test_no_funds_sent() {
-    let mut t = setup_integration(None);
-
-    let sender = t.accounts["provider"].clone();
-    let err = t
-        .app
-        .execute_contract(
-            sender,
-            t.contract.clone(),
-            &ExecMsg::Swap {
-                routes: vec![],
-                token_out_min_amount: Coin::new(1, "uion"),
-                fee_percentage: None,
-                fee_collector: String::new(),
-            },
-            &[],
-        )
-        .unwrap_err();
-
-    assert_eq!(
-        err.downcast_ref::<ContractError>().unwrap(),
-        &ContractError::Payment(cw_utils::PaymentError::NoFunds {})
-    );
-}
 
 fn setup_unit(fee: Option<Decimal>) -> OwnedDeps<MockStorage, MockApi, MockQuerier, Empty> {
     let affiliate_swap = AffiliateSwap::new();

@@ -50,5 +50,4 @@ osmosis-std = "0.15.2"
 cw-utils = "1.0.0"
 
 [dev-dependencies]
-anyhow = "1.0.68"
-cw-multi-test = "0.13.2"
+osmosis-test-tube = "15.1.0"
