@@ -28,7 +28,7 @@ When instantiating the json message would look like:
 
 ``` json
 {
-  "max_fee_percentage": "5.5"
+  "max_fee_percentage": "1.5"
 }
 ```
 

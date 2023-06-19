@@ -17,7 +17,7 @@ use crate::error::ContractError;
 const CONTRACT_NAME: &str = "crates.io:affiliate_swap";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const DEFAULT_MAX_FEE: &str = "5";
+const DEFAULT_MAX_FEE: &str = "1.5";
 
 // Temporary storage of active swap
 #[cw_serde]
