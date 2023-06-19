@@ -6,7 +6,7 @@ tokens with affiliate fees. The contract supports swapping tokens using Osmosis.
 The contract charges an affiliate fee for each swap transaction, which is
 deducted from the swap amount and transferred to the provided fee collector
 address. The affiliate fee percentage is configurable and has a default value of
-5%.
+1.5%.
 
 ## Usage
 
@@ -32,7 +32,7 @@ When instantiating the json message would look like:
 }
 ```
 
-The max fee cannot be larger than 50%
+The max fee cannot be larger than 10%
 
 #### Execution
 
@@ -40,7 +40,7 @@ The max fee cannot be larger than 50%
 
     - `routes`: An array of `SwapAmountInRoute` structs specifying the input and output tokens along with the pool in which to execute the swap.
     - `token_out_min_amount`: The minimum amount of output token expected to receive from the swap.
-    - `fee_percentage`: The percentage of the swap amount charged as an affiliate fee. If not provided, the default value of 5% is used.
+    - `fee_percentage`: The percentage of the swap amount charged as an affiliate fee. If not provided, the default value of 1.5% is used.
     - `fee_collector`: The address to which the affiliate fee is transferred.
 
     **Messages**

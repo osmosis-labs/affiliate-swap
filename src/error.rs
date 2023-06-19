@@ -15,8 +15,8 @@ pub enum ContractError {
     #[error("{0}")]
     Overflow(#[from] cosmwasm_std::OverflowError),
 
-    #[error("Invalid max fee percentage. Must be between 0 and 50")]
-    InvalidMaxFeePercentage {},
+    #[error("Invalid max fee percentage. Must be between 0 and {true_max_fee}")]
+    InvalidMaxFeePercentage { true_max_fee: String },
 
     #[error("Funds must contain at least one token")]
     AtLeastSingleTokenExpected {},

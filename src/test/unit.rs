@@ -79,7 +79,7 @@ fn is_valid_bank_send_msg(msg: &CosmosMsg, receiver: &str, amount: Uint128, deno
 #[test]
 fn test_fee_calculation() {
     let affiliate_swap = AffiliateSwap::new();
-    let mut deps = setup_unit(None);
+    let mut deps = setup_unit(Some(Decimal::from_str("5").unwrap()));
 
     // No fee set, no fee taken
     let res = simple_execute(deps.as_mut(), 100, None);
@@ -151,7 +151,7 @@ fn simple_reply(deps: DepsMut, amount: impl Display) -> Response {
 
 #[test]
 fn test_reply() {
-    let mut deps = setup_unit(None);
+    let mut deps = setup_unit(Some(Decimal::from_str("5").unwrap()));
 
     simple_execute(deps.as_mut(), 100, Some(Decimal::from_str("1").unwrap()));
     let res = simple_reply(deps.as_mut(), 98);
@@ -203,7 +203,7 @@ fn test_reply() {
 
 #[test]
 fn test_bad_reply() {
-    let mut deps = setup_unit(None);
+    let mut deps = setup_unit(Some(Decimal::from_str("5").unwrap()));
     simple_execute(deps.as_mut(), 100, Some(Decimal::from_str("1").unwrap()));
     reply(
         deps.as_mut(),

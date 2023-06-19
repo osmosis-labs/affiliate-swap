@@ -17,7 +17,8 @@ use crate::error::ContractError;
 const CONTRACT_NAME: &str = "crates.io:affiliate_swap";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const DEFAULT_MAX_FEE: &str = "1.5";
+pub const DEFAULT_MAX_FEE: &str = "1.5";
+pub const TRUE_MAX_FEE: &str = "10";
 
 // Temporary storage of active swap
 #[cw_serde]
@@ -56,8 +57,10 @@ impl<'a> AffiliateSwap<'a> {
         cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
         let max_fee = max_fee_percentage.unwrap_or(Decimal::from_str(DEFAULT_MAX_FEE)?);
-        if max_fee < Decimal::zero() || max_fee > Decimal::from_str("50")? {
-            return Err(ContractError::InvalidMaxFeePercentage {});
+        if max_fee < Decimal::zero() || max_fee > Decimal::from_str(TRUE_MAX_FEE)? {
+            return Err(ContractError::InvalidMaxFeePercentage {
+                true_max_fee: TRUE_MAX_FEE.to_string(),
+            });
         }
 
         // set the max fee

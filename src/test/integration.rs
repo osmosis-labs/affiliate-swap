@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
 use cosmwasm_std::{coins, Coin, Decimal};
-use osmosis_test_tube::{Account, FeeSetting, SigningAccount};
+use osmosis_test_tube::{Account, FeeSetting};
 
 use crate::{
-    contract::{ExecMsg, InstantiateMsg},
+    contract::{ExecMsg, InstantiateMsg, DEFAULT_MAX_FEE, TRUE_MAX_FEE},
     ContractError,
 };
 
@@ -21,10 +21,10 @@ fn setup_integration(fee: Option<Decimal>) -> TestEnv {
 // Test instantiate with no max fee
 #[test]
 fn test_instantiate() {
-    // If no max_fee is set, the max fee defaults to 5%
+    // If no max_fee is set, the max fee defaults to 1.5%
     let t = setup_integration(None);
     let max_fee = t.query_max_fee();
-    assert_eq!(max_fee, Decimal::from_str("5").unwrap());
+    assert_eq!(max_fee, Decimal::from_str(DEFAULT_MAX_FEE).unwrap());
 
     // Test instantiate with a 5% max fee
     let t = setup_integration(Some(Decimal::from_str("5").unwrap()));
@@ -42,17 +42,19 @@ fn test_instantiate() {
     assert_eq!(max_fee, Decimal::from_str("0").unwrap());
 
     // Test instantiate with a 50% max fee
-    let t = setup_integration(Some(Decimal::from_str("50").unwrap()));
+    let t = setup_integration(Some(Decimal::from_str(TRUE_MAX_FEE).unwrap()));
     let max_fee = t.query_max_fee();
-    assert_eq!(max_fee, Decimal::from_str("50").unwrap());
+    assert_eq!(max_fee, Decimal::from_str(TRUE_MAX_FEE).unwrap());
 }
 
 #[test]
-#[should_panic(expected = "Invalid max fee percentage. Must be between 0 and 50")]
-fn test_instantiate_with_fee_greater_than_50_percent() {
+#[should_panic(expected = "Invalid max fee percentage. Must be between 0 and 10")]
+fn test_instantiate_with_fee_greater_than_true_max_fee_percent() {
+    // convert TRUE_MAX_FEE to a u8
+    let max_fee = Decimal::from_str(TRUE_MAX_FEE).unwrap() + Decimal::from_str("1").unwrap();
     TestEnvBuilder::new()
         .with_instantiate_msg(InstantiateMsg {
-            max_fee_percentage: Some(Decimal::from_str("51").unwrap()),
+            max_fee_percentage: Some(Decimal::from_str(format!("{max_fee}").as_str()).unwrap()),
         })
         .build();
 }
