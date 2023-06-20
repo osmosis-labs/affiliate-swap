@@ -182,6 +182,9 @@ fn test_reply() {
         .iter()
         .find(|e| e.ty == "affiliate_swap")
         .unwrap();
+
+    // (boss): [nice!] this should exist in cosmwasm-std! very useful for testing
+    // I will add this for osmosis-std/test-tube side as well
     let event_attributes = event
         .attributes
         .iter()
