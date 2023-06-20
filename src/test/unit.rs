@@ -37,7 +37,7 @@ fn simple_execute(deps: DepsMut, amount: u128, fee: Option<Decimal>) -> Response
     execute(
         deps,
         mock_env(),
-        mock_info(SENDER, &vec![Coin::new(amount, "uosmo")]),
+        mock_info(SENDER, &[Coin::new(amount, "uosmo")]),
         ContractExecMsg::AffiliateSwap(ExecMsg::Swap {
             routes: vec![SwapAmountInRoute {
                 pool_id: 1,
@@ -55,7 +55,7 @@ fn is_valid_swap_msg(msg: &CosmosMsg) -> bool {
     match msg {
         CosmosMsg::Stargate { type_url, value } => {
             type_url == "/osmosis.poolmanager.v1beta1.MsgSwapExactAmountIn"
-                && value.as_slice().len() > 0
+                && !value.as_slice().is_empty()
         }
         _ => false,
     }
@@ -99,6 +99,7 @@ fn test_fee_calculation() {
         "uosmo"
     ));
     assert!(is_valid_swap_msg(&res.messages[1].msg));
+    // (boss): assert token_in == 99u128 to ensure that calculation works alright?
 
     // delete the active swap. This would normally be handled by the reply
     affiliate_swap.active_swap.remove(&mut deps.storage);
@@ -113,6 +114,7 @@ fn test_fee_calculation() {
         "uosmo"
     ));
     assert!(is_valid_swap_msg(&res.messages[1].msg));
+    // (boss): assert token_in == 90u128 to ensure that calculation works alright?
 
     // delete the active swap. This would normally be handled by the reply
     affiliate_swap.active_swap.remove(&mut deps.storage);
@@ -127,6 +129,11 @@ fn test_fee_calculation() {
         "uosmo"
     ));
     assert!(is_valid_swap_msg(&res.messages[1].msg));
+    // (boss): assert token_in == 983u128 to ensure that calculation works alright?
+
+    // (boss): edge cases for fee calculation?: eg.
+    // - fee = Decimal::raw(1u128)
+    // - amount = 1u128, u128::MAX
 }
 
 fn simple_reply(deps: DepsMut, amount: impl Display) -> Response {

@@ -111,3 +111,5 @@ fn test_failed_swap() {
     // TODO: Figure out how to give better error messages to users
     println!("{}", err);
 }
+
+// (boss): test successful swaps here?

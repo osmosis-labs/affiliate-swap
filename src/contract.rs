@@ -110,6 +110,7 @@ impl<'a> AffiliateSwap<'a> {
         let fee_percentage = std::cmp::min(max_fee_percentage, fee_percentage);
 
         // calculate the fee to deduct
+        // (boss): [question] not using checked_mul here as error is unexpected?
         let fee = coin.amount * fee_percentage.checked_div(Decimal::from_str("100")?)?;
 
         // Add the messages but skip the fee transfer if it is zero
@@ -120,7 +121,7 @@ impl<'a> AffiliateSwap<'a> {
                 to_address: fee_collector.to_string(),
                 amount: vec![Coin {
                     denom: coin.denom.clone(),
-                    amount: fee.into(),
+                    amount: fee,
                 }],
             }
             .into();
@@ -133,12 +134,15 @@ impl<'a> AffiliateSwap<'a> {
             token_in: Some(
                 Coin {
                     denom: coin.denom.clone(),
+                    // (boss): [question] not using checked_sub here as error is unexpected?
                     amount: coin.amount - fee,
                 }
                 .into(),
             ),
             token_out_min_amount: token_out_min_amount.amount.to_string(),
         };
+        // (boss): [nit] explain why 1 is used (seems that it does not matter as long as it is not zero (UNUSED_MSG_ID))
+        // cause reply entrypoint of this contract only respond to this msg?
         msgs.push(SubMsg::reply_always(swap_msg.clone(), 1));
 
         self.active_swap.save(
@@ -176,6 +180,7 @@ impl<'a> AffiliateSwap<'a> {
 
         // Success
         deps.api.debug(&format!("Reply: {:?}", msg));
+        // (boss): can just do this `let res: MsgSwapExactAmountInResponse = msg.result.try_into()?;`
         if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
             let res: MsgSwapExactAmountInResponse = b.try_into()?;
 
@@ -188,16 +193,15 @@ impl<'a> AffiliateSwap<'a> {
                 .token_out_denom;
 
             let bank_msg = BankMsg::Send {
-                to_address: active_swap.original_sender.clone().into_string(),
+                to_address: active_swap.original_sender.to_string(),
                 amount: coins(amount.u128(), token_out_denom.clone()),
             };
 
-            let token_in: Coin = coinvert(
-                active_swap
-                    .swap_msg
-                    .token_in
-                    .ok_or(ContractError::Unexpected {})?,
-            )?;
+            let token_in: Coin = active_swap
+                .swap_msg
+                .token_in
+                .ok_or(ContractError::Unexpected {})?
+                .try_into()?; // (boss): there is a `TryFrom` impl for proto Coin to cosmwasm_std Coin
 
             let response = SwapResponse {
                 original_sender: active_swap.original_sender.into_string(),
@@ -221,7 +225,7 @@ impl<'a> AffiliateSwap<'a> {
                             "token_out",
                             Coin {
                                 denom: token_out_denom.to_string(),
-                                amount: amount.into(),
+                                amount,
                             }
                             .to_string(),
                         ),
@@ -252,6 +256,7 @@ pub struct SwapResponse {
     pub token_out_amount: Uint128,
 }
 
+// (boss): use existing try_into instead
 // Convert a cosmos proto Coin to a cosmwasm Coin
 fn coinvert(
     coin: osmosis_std::types::cosmos::base::v1beta1::Coin,
