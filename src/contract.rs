@@ -1,12 +1,11 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     coins, to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, Event,
-    MessageInfo, Reply, Response, SubMsg, SubMsgResponse, SubMsgResult, Uint128,
+    MessageInfo, Reply, Response, SubMsg, Uint128,
 };
 use cw_storage_plus::Item;
-use osmosis_std::types::osmosis::{
-    gamm::v1beta1::MsgSwapExactAmountInResponse,
-    poolmanager::v1beta1::{MsgSwapExactAmountIn, SwapAmountInRoute},
+use osmosis_std::types::osmosis::poolmanager::v1beta1::{
+    MsgSwapExactAmountIn, MsgSwapExactAmountInResponse, SwapAmountInRoute,
 };
 use std::str::FromStr;
 use sylvia::contract;
@@ -110,7 +109,6 @@ impl<'a> AffiliateSwap<'a> {
         let fee_percentage = std::cmp::min(max_fee_percentage, fee_percentage);
 
         // calculate the fee to deduct
-        // (boss): [question] not using checked_mul here as error is unexpected?
         let fee = coin.amount * fee_percentage.checked_div(Decimal::from_str("100")?)?;
 
         // Add the messages but skip the fee transfer if it is zero
@@ -134,15 +132,14 @@ impl<'a> AffiliateSwap<'a> {
             token_in: Some(
                 Coin {
                     denom: coin.denom.clone(),
-                    // (boss): [question] not using checked_sub here as error is unexpected?
-                    amount: coin.amount - fee,
+                    amount: coin.amount.checked_sub(fee)?,
                 }
                 .into(),
             ),
             token_out_min_amount: token_out_min_amount.amount.to_string(),
         };
-        // (boss): [nit] explain why 1 is used (seems that it does not matter as long as it is not zero (UNUSED_MSG_ID))
-        // cause reply entrypoint of this contract only respond to this msg?
+
+        // hardcoding the reply_id here because there is only one submessage in this contract
         msgs.push(SubMsg::reply_always(swap_msg.clone(), 1));
 
         self.active_swap.save(
@@ -178,64 +175,57 @@ impl<'a> AffiliateSwap<'a> {
         let active_swap = self.active_swap.load(deps.storage)?;
         self.active_swap.remove(deps.storage);
 
-        // Success
         deps.api.debug(&format!("Reply: {:?}", msg));
-        // (boss): can just do this `let res: MsgSwapExactAmountInResponse = msg.result.try_into()?;`
-        if let SubMsgResult::Ok(SubMsgResponse { data: Some(b), .. }) = msg.result {
-            let res: MsgSwapExactAmountInResponse = b.try_into()?;
+        // if the message result is an error this will fail
+        let res: MsgSwapExactAmountInResponse = msg.result.try_into()?;
 
-            let amount = Uint128::from_str(&res.token_out_amount)?;
-            let token_out_denom = &active_swap
-                .swap_msg
-                .routes
-                .last()
-                .ok_or(ContractError::Unexpected {})?
-                .token_out_denom;
+        // Success
+        let amount = Uint128::from_str(&res.token_out_amount)?;
+        let token_out_denom = &active_swap
+            .swap_msg
+            .routes
+            .last()
+            .ok_or(ContractError::Unexpected {})?
+            .token_out_denom;
 
-            let bank_msg = BankMsg::Send {
-                to_address: active_swap.original_sender.to_string(),
-                amount: coins(amount.u128(), token_out_denom.clone()),
-            };
+        let bank_msg = BankMsg::Send {
+            to_address: active_swap.original_sender.to_string(),
+            amount: coins(amount.u128(), token_out_denom.clone()),
+        };
 
-            let token_in: Coin = active_swap
-                .swap_msg
-                .token_in
-                .ok_or(ContractError::Unexpected {})?
-                .try_into()?; // (boss): there is a `TryFrom` impl for proto Coin to cosmwasm_std Coin
+        let token_in: Coin = active_swap
+            .swap_msg
+            .token_in
+            .ok_or(ContractError::Unexpected {})?
+            .try_into()?;
 
-            let response = SwapResponse {
-                original_sender: active_swap.original_sender.into_string(),
-                fee: active_swap.fee.amount,
-                fee_collector: active_swap.fee_collector,
-                swap_in_amount: token_in.amount,
-                swap_in_denom: token_in.clone().denom,
-                token_out_denom: token_out_denom.to_string(),
-                token_out_amount: amount,
-            };
+        let response = SwapResponse {
+            original_sender: active_swap.original_sender.into_string(),
+            fee: active_swap.fee.amount,
+            fee_collector: active_swap.fee_collector,
+            swap_in_amount: token_in.amount,
+            swap_in_denom: token_in.clone().denom,
+            token_out_denom: token_out_denom.to_string(),
+            token_out_amount: amount,
+        };
 
-            return Ok(Response::new()
-                .add_message(bank_msg)
-                .set_data(to_binary(&response)?)
-                .add_event(
-                    Event::new("affiliate_swap")
-                        .add_attribute("sender", response.original_sender)
-                        .add_attribute("swap_token_in", token_in.to_string())
-                        .add_attribute("fee", active_swap.fee.to_string())
-                        .add_attribute(
-                            "token_out",
-                            Coin {
-                                denom: token_out_denom.to_string(),
-                                amount,
-                            }
-                            .to_string(),
-                        ),
-                ));
-        }
-
-        // Failure
-        Err(ContractError::FailedSwap {
-            reason: msg.result.unwrap_err(),
-        })
+        return Ok(Response::new()
+            .add_message(bank_msg)
+            .set_data(to_binary(&response)?)
+            .add_event(
+                Event::new("affiliate_swap")
+                    .add_attribute("sender", response.original_sender)
+                    .add_attribute("swap_token_in", token_in.to_string())
+                    .add_attribute("fee", active_swap.fee.to_string())
+                    .add_attribute(
+                        "token_out",
+                        Coin {
+                            denom: token_out_denom.to_string(),
+                            amount,
+                        }
+                        .to_string(),
+                    ),
+            ));
     }
 }
 
@@ -254,15 +244,4 @@ pub struct SwapResponse {
     pub swap_in_amount: Uint128,
     pub token_out_denom: String,
     pub token_out_amount: Uint128,
-}
-
-// (boss): use existing try_into instead
-// Convert a cosmos proto Coin to a cosmwasm Coin
-fn coinvert(
-    coin: osmosis_std::types::cosmos::base::v1beta1::Coin,
-) -> Result<Coin, cosmwasm_std::StdError> {
-    Ok(Coin {
-        denom: coin.denom,
-        amount: Uint128::from_str(&coin.amount)?,
-    })
 }

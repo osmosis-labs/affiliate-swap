@@ -9,8 +9,9 @@ use cosmwasm_std::{
     from_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Empty, OwnedDeps, Reply,
     Response, SubMsgResponse, SubMsgResult, Uint128,
 };
-use osmosis_std::types::osmosis::gamm::v1beta1::MsgSwapExactAmountInResponse;
-use osmosis_std::types::osmosis::poolmanager::v1beta1::SwapAmountInRoute;
+use osmosis_std::types::osmosis::poolmanager::v1beta1::{
+    MsgSwapExactAmountIn, MsgSwapExactAmountInResponse, SwapAmountInRoute,
+};
 
 use crate::contract::ExecMsg;
 use crate::contract::{AffiliateSwap, ContractExecMsg, SwapResponse};
@@ -51,11 +52,17 @@ fn simple_execute(deps: DepsMut, amount: u128, fee: Option<Decimal>) -> Response
     .unwrap()
 }
 
-fn is_valid_swap_msg(msg: &CosmosMsg) -> bool {
+fn is_valid_swap_msg(msg: &CosmosMsg, token_in: Coin) -> bool {
     match msg {
         CosmosMsg::Stargate { type_url, value } => {
-            type_url == "/osmosis.poolmanager.v1beta1.MsgSwapExactAmountIn"
-                && !value.as_slice().is_empty()
+            let basic = type_url == "/osmosis.poolmanager.v1beta1.MsgSwapExactAmountIn"
+                && !value.as_slice().is_empty();
+            let swap_value = {
+                let swap_msg: MsgSwapExactAmountIn = value.clone().try_into().expect("bad msg");
+                //println!("{:?}", swap_msg.token_in);
+                swap_msg.token_in.unwrap() == token_in.into()
+            };
+            basic && swap_value
         }
         _ => false,
     }
@@ -84,7 +91,10 @@ fn test_fee_calculation() {
     // No fee set, no fee taken
     let res = simple_execute(deps.as_mut(), 100, None);
     assert_eq!(res.messages.len(), 1);
-    assert!(is_valid_swap_msg(&res.messages[0].msg));
+    assert!(is_valid_swap_msg(
+        &res.messages[0].msg,
+        Coin::new(100, "uosmo")
+    ));
 
     // delete the active swap. This would normally be handled by the reply
     affiliate_swap.active_swap.remove(&mut deps.storage);
@@ -98,8 +108,10 @@ fn test_fee_calculation() {
         1u128.into(),
         "uosmo"
     ));
-    assert!(is_valid_swap_msg(&res.messages[1].msg));
-    // (boss): assert token_in == 99u128 to ensure that calculation works alright?
+    assert!(is_valid_swap_msg(
+        &res.messages[1].msg,
+        Coin::new(99, "uosmo")
+    ),);
 
     // delete the active swap. This would normally be handled by the reply
     affiliate_swap.active_swap.remove(&mut deps.storage);
@@ -113,8 +125,10 @@ fn test_fee_calculation() {
         5u128.into(),
         "uosmo"
     ));
-    assert!(is_valid_swap_msg(&res.messages[1].msg));
-    // (boss): assert token_in == 90u128 to ensure that calculation works alright?
+    assert!(is_valid_swap_msg(
+        &res.messages[1].msg,
+        Coin::new(95, "uosmo")
+    ));
 
     // delete the active swap. This would normally be handled by the reply
     affiliate_swap.active_swap.remove(&mut deps.storage);
@@ -128,12 +142,68 @@ fn test_fee_calculation() {
         17u128.into(),
         "uosmo"
     ));
-    assert!(is_valid_swap_msg(&res.messages[1].msg));
-    // (boss): assert token_in == 983u128 to ensure that calculation works alright?
+    assert!(is_valid_swap_msg(
+        &res.messages[1].msg,
+        Coin::new(983, "uosmo")
+    ));
 
-    // (boss): edge cases for fee calculation?: eg.
-    // - fee = Decimal::raw(1u128)
-    // - amount = 1u128, u128::MAX
+    // delete the active swap. This would normally be handled by the reply
+    affiliate_swap.active_swap.remove(&mut deps.storage);
+
+    // Edge cases
+
+    // low amounts send amount: no fee taken
+    let res = simple_execute(deps.as_mut(), 1, Some(Decimal::from_str("1").unwrap()));
+    assert_eq!(res.messages.len(), 1);
+    assert!(is_valid_swap_msg(
+        &res.messages[0].msg,
+        Coin::new(1, "uosmo")
+    ));
+    // delete the active swap. This would normally be handled by the reply
+    affiliate_swap.active_swap.remove(&mut deps.storage);
+
+    // Fee rounds to less than one: no fee taken
+    let res = simple_execute(deps.as_mut(), 9, Some(Decimal::from_str("10").unwrap()));
+    assert_eq!(res.messages.len(), 1);
+    assert!(is_valid_swap_msg(
+        &res.messages[0].msg,
+        Coin::new(9, "uosmo")
+    ));
+    // delete the active swap. This would normally be handled by the reply
+    affiliate_swap.active_swap.remove(&mut deps.storage);
+
+    // Fee rounds to at least one: fee taken
+    let res = simple_execute(deps.as_mut(), 20, Some(Decimal::from_str("5").unwrap()));
+    assert_eq!(res.messages.len(), 2);
+    assert!(is_valid_bank_send_msg(
+        &res.messages[0].msg,
+        COLLECTOR,
+        1u128.into(),
+        "uosmo"
+    ));
+    assert!(is_valid_swap_msg(
+        &res.messages[1].msg,
+        Coin::new(19, "uosmo")
+    ));
+    // delete the active swap. This would normally be handled by the reply
+    affiliate_swap.active_swap.remove(&mut deps.storage);
+
+    // Max uint amount
+    let res = simple_execute(deps.as_mut(), Uint128::MAX.into(), Some(Decimal::from_str("5").unwrap()));
+    assert_eq!(res.messages.len(), 2);
+    let fee = Uint128::MAX*(Decimal::from_str("5").unwrap().checked_div(Decimal::from_str("100").unwrap()).unwrap());
+    assert!(is_valid_bank_send_msg(
+        &res.messages[0].msg,
+        COLLECTOR,
+        fee,
+        "uosmo"
+    ));
+    assert!(is_valid_swap_msg(
+        &res.messages[1].msg,
+        Coin::new((Uint128::MAX-fee).into(), "uosmo")
+    ));
+    // delete the active swap. This would normally be handled by the reply
+    affiliate_swap.active_swap.remove(&mut deps.storage);
 }
 
 fn simple_reply(deps: DepsMut, amount: impl Display) -> Response {
@@ -183,8 +253,6 @@ fn test_reply() {
         .find(|e| e.ty == "affiliate_swap")
         .unwrap();
 
-    // (boss): [nice!] this should exist in cosmwasm-std! very useful for testing
-    // I will add this for osmosis-std/test-tube side as well
     let event_attributes = event
         .attributes
         .iter()
