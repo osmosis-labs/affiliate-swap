@@ -65,7 +65,7 @@ impl TestEnvBuilder {
 
         let wasm_byte_code = std::fs::read("./test_artifacts/affiliate_swap.wasm").unwrap();
         let code_id = wasm
-            .store_code(&wasm_byte_code, None, &admin)
+            .store_code(&wasm_byte_code, None, admin)
             .unwrap()
             .data
             .code_id;
